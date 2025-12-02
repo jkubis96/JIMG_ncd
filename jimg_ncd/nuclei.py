@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 import plotly.io as pio
 import plotly.offline as pyo
+import seaborn as sns
 import skimage
 import umap
 from csbdeep.utils import normalize
@@ -26,10 +27,10 @@ from sklearn.preprocessing import StandardScaler
 from stardist.models import StarDist2D
 from stardist.plot import render_label
 from tqdm import tqdm
-import seaborn as sns
 
 pio.renderers.default = "browser"
 
+import jimg_ncd.config as cfg
 
 from .utils import *
 
@@ -1528,8 +1529,9 @@ class NucleiFinder(ImageTools, RepTools):
             print("No results to return!")
             return None
         else:
-            if self.show_plots:
-                display_preview(self.resize_to_screen_img(self.images["nuclei"]))
+            if cfg._DISPLAY_MODE:
+                if self.show_plots:
+                    display_preview(self.resize_to_screen_img(self.images["nuclei"]))
             return self.nuclei_results["nuclei"], self.images["nuclei"]
 
     def get_results_nuclei_selected(self):
@@ -1546,10 +1548,11 @@ class NucleiFinder(ImageTools, RepTools):
             print("No results to return!")
             return None
         else:
-            if self.show_plots:
-                display_preview(
-                    self.resize_to_screen_img(self.images["nuclei_reduced"])
-                )
+            if cfg._DISPLAY_MODE:
+                if self.show_plots:
+                    display_preview(
+                        self.resize_to_screen_img(self.images["nuclei_reduced"])
+                    )
             return self.nuclei_results["nuclei_reduced"], self.images["nuclei_reduced"]
 
     def get_results_nuclei_chromatinization(self):
@@ -1566,8 +1569,9 @@ class NucleiFinder(ImageTools, RepTools):
             print("No results to return!")
             return None
         else:
-            if self.show_plots:
-                display_preview(self.images["nuclei_chromatinization"])
+            if cfg._DISPLAY_MODE:
+                if self.show_plots:
+                    display_preview(self.images["nuclei_chromatinization"])
             return (
                 self.nuclei_results["nuclei_chromatinization"],
                 self.images["nuclei_chromatinization"],
@@ -1728,8 +1732,9 @@ class NucleiFinder(ImageTools, RepTools):
         plt.axis("off")
         plt.title("Original", fontsize=25)
 
-        if self.show_plots:
-            plt.show()
+        if cfg._DISPLAY_MODE:
+            if self.show_plots:
+                plt.show()
 
         plot.append(fig)
 
@@ -1753,8 +1758,9 @@ class NucleiFinder(ImageTools, RepTools):
                     fontsize=25,
                 )
 
-                if self.show_plots:
-                    plt.show()
+                if cfg._DISPLAY_MODE:
+                    if self.show_plots:
+                        plt.show()
 
                 plot.append(fig)
 
@@ -1824,8 +1830,11 @@ class NucleiFinder(ImageTools, RepTools):
                     concatenated_image = cv2.hconcat([oryginal, nuclei_mask])
                     self.images["nuclei"] = concatenated_image
 
-                if self.show_plots:
-                    display_preview(self.resize_to_screen_img(self.images["nuclei"]))
+                if cfg._DISPLAY_MODE:
+                    if self.show_plots:
+                        display_preview(
+                            self.resize_to_screen_img(self.images["nuclei"])
+                        )
 
             else:
 
@@ -1904,10 +1913,11 @@ class NucleiFinder(ImageTools, RepTools):
 
                     self.images["nuclei_reduced"] = concatenated_image
 
-                if self.show_plots:
-                    display_preview(
-                        self.resize_to_screen_img(self.images["nuclei_reduced"])
-                    )
+                if cfg._DISPLAY_MODE:
+                    if self.show_plots:
+                        display_preview(
+                            self.resize_to_screen_img(self.images["nuclei_reduced"])
+                        )
 
             else:
                 self.nuclei_results["nuclei"] = None
@@ -2251,10 +2261,13 @@ class NucleiFinder(ImageTools, RepTools):
 
             self.images["nuclei_chromatinization"] = concatenated_image
 
-            if self.show_plots:
-                display_preview(
-                    self.resize_to_screen_img(self.images["nuclei_chromatinization"])
-                )
+            if cfg._DISPLAY_MODE:
+                if self.show_plots:
+                    display_preview(
+                        self.resize_to_screen_img(
+                            self.images["nuclei_chromatinization"]
+                        )
+                    )
 
         else:
             print("Lack of nuclei data to select!")
@@ -2557,10 +2570,13 @@ class NucleiFinder(ImageTools, RepTools):
 
             self.images["nuclei_chromatinization"] = concatenated_image
 
-            if self.show_plots:
-                display_preview(
-                    self.resize_to_screen_img(self.images["nuclei_chromatinization"])
-                )
+            if cfg._DISPLAY_MODE:
+                if self.show_plots:
+                    display_preview(
+                        self.resize_to_screen_img(
+                            self.images["nuclei_chromatinization"]
+                        )
+                    )
 
         else:
             print("Lack of nuclei data to select!")
@@ -3735,12 +3751,13 @@ class GroupAnalysis:
         if self.knee_plot is None:
             print("\nNo results to return! Please run the var_plot() method first.")
         else:
-            if show is True:
-                self.knee_plot
-                try:
-                    display(self.knee_plot)
-                except:
-                    None
+            if cfg._DISPLAY_MODE:
+                if show is True:
+                    self.knee_plot
+                    try:
+                        display(self.knee_plot)
+                    except:
+                        None
 
             return self.knee_plot
 
@@ -3811,14 +3828,14 @@ class GroupAnalysis:
                     "\nNo results to return! Please run the UMAP() and / or UMAP_on_clusters() methods first."
                 )
             else:
-
-                if show is True:
-                    for k in self.UMAP_plot["html"].keys():
-                        self.UMAP_plot["html"][k]
-                        try:
-                            display(self.UMAP_plot["html"][k])
-                        except:
-                            None
+                if cfg._DISPLAY_MODE:
+                    if show:
+                        for k in self.UMAP_plot["html"].keys():
+                            self.UMAP_plot["html"][k]
+                            try:
+                                display(self.UMAP_plot["html"][k])
+                            except:
+                                None
 
                 return self.UMAP_plot["html"]
 
@@ -3829,14 +3846,14 @@ class GroupAnalysis:
                     "\nNo results to return! Please run the UMAP() and / or UMAP_on_clusters() methods first."
                 )
             else:
-
-                if show is True:
-                    for k in self.UMAP_plot["static"].keys():
-                        self.UMAP_plot["static"][k]
-                        try:
-                            display(self.UMAP_plot["static"][k])
-                        except:
-                            None
+                if cfg._DISPLAY_MODE:
+                    if show:
+                        for k in self.UMAP_plot["static"].keys():
+                            self.UMAP_plot["static"][k]
+                            try:
+                                display(self.UMAP_plot["static"][k])
+                            except:
+                                None
 
                 return self.UMAP_plot["static"]
 
@@ -4323,75 +4340,77 @@ class GroupAnalysis:
             )
 
         self.DFA_results = results
-        
-    def heatmap_DFA(self, p_value:float | int = 0.05, top_n:int = 5, figsize=(10,5)):
+
+    def heatmap_DFA(self, p_value: float | int = 0.05, top_n: int = 5, figsize=(10, 5)):
         """
         Generate a heatmap of the top features from DFA results filtered by p-value and log fold change.
-     
+
         Parameters
         ----------
         p_value : float or int, optional
             Significance threshold to filter features based on their p-value. Only features with p_val < p_value are included.
             Default is 0.05.
-            
+
         top_n : int, optional
             Number of top features to select per group based on the 'esm' score. Default is 5.
-            
+
         figsize : tuple, optional
             Size of the resulting matplotlib figure. Default is (10, 5).
-     
+
         Notes
         -----
         The method displays the heatmap and stores the figure in `self.DFA_plot`.
-        
+
         Conditions:
         - Only features with a positive log fold change ('log(FC)' > 0) are considered.
         - The heatmap values represent -log10(p_value) for visualization.
         """
-   
-        df_reduced = self.DFA_results.copy()
-        
-        df_reduced = df_reduced[df_reduced['log(FC)'] > 0]
 
-        df_reduced = df_reduced[df_reduced['p_val'] < p_value]
-        
-        df_reduced = (
-            df_reduced
-            .groupby('valid_group', group_keys=False)
-            .apply(lambda x: x.sort_values('esm', ascending=False).head(top_n))
+        df_reduced = self.DFA_results.copy()
+
+        df_reduced = df_reduced[df_reduced["log(FC)"] > 0]
+
+        df_reduced = df_reduced[df_reduced["p_val"] < p_value]
+
+        df_reduced = df_reduced.groupby("valid_group", group_keys=False).apply(
+            lambda x: x.sort_values("esm", ascending=False).head(top_n)
         )
-        
-        df_reduced['-log(p_value)'] = -np.log10(df_reduced['p_val'])
-        
-        
-        heatmap_data = df_reduced.pivot(index='feature', columns='valid_group', values='-log(p_value)').fillna(0)
-        
-        
+
+        df_reduced["-log(p_value)"] = -np.log10(df_reduced["p_val"])
+
+        heatmap_data = df_reduced.pivot(
+            index="feature", columns="valid_group", values="-log(p_value)"
+        ).fillna(0)
+
         figure = plt.figure(figsize=figsize)
-        sns.heatmap(heatmap_data, 
-                    cmap='viridis',
-                    linewidths=0.5, 
-                    linecolor='gray', 
-                    cbar_kws={'label': '-log10(p_value)'},
-                    fmt=".2f")       
+        sns.heatmap(
+            heatmap_data,
+            cmap="viridis",
+            linewidths=0.5,
+            linecolor="gray",
+            cbar_kws={"label": "-log10(p_value)"},
+            fmt=".2f",
+        )
         plt.ylabel("Feature")
         plt.xlabel("Cluster")
-        plt.xticks(rotation=30, ha='right')
-        
+        plt.xticks(rotation=30, ha="right")
+
         plt.tight_layout()
-        plt.show()
-        
+
+        if cfg._DISPLAY_MODE:
+            plt.show()
+
         self.DFA_plot = figure
-        
+
     def get_DFA_plot(self, show: bool = True):
         """
         Retrieve the heatmap figure generated by `heatmap_DFA()`.
-     
+
         Parameters
         ----------
         show : bool, optional
             Whether to display the stored heatmap figure. Default is True.
-     
+
         Returns
         -------
         matplotlib.figure.Figure
@@ -4401,49 +4420,49 @@ class GroupAnalysis:
         if self.DFA_plot is None:
             print("\nNo results to return! Please run the heatmap_DFA() method first.")
         else:
-            if show is True:
-                self.DFA_plot
-                try:
-                    display(self.DFA_plot)
-                except:
-                    None
+            if cfg._DISPLAY_MODE:
+                if show is True:
+                    self.DFA_plot
+                    try:
+                        display(self.DFA_plot)
+                    except:
+                        None
 
             return self.DFA_plot
-        
-        
+
         df_reduced = self.DFA_results.copy()
-            
-        df_reduced = df_reduced[df_reduced['p_val'] < p_value]
-        df_reduced = df_reduced[df_reduced['log(FC)'] > 0]
-        
-        
-        df_reduced = (
-            df_reduced
-            .groupby('valid_group', group_keys=False)
-            .apply(lambda x: x.sort_values('esm', ascending=False).head(top_n))
+
+        df_reduced = df_reduced[df_reduced["p_val"] < p_value]
+        df_reduced = df_reduced[df_reduced["log(FC)"] > 0]
+
+        df_reduced = df_reduced.groupby("valid_group", group_keys=False).apply(
+            lambda x: x.sort_values("esm", ascending=False).head(top_n)
         )
-        
-        df_reduced['-log(p_value)'] = -np.log10(df_reduced['p_val'])
-        
-        
-        heatmap_data = df_reduced.pivot(index='feature', columns='valid_group', values='-log(p_value)').fillna(0)
-        
-        
+
+        df_reduced["-log(p_value)"] = -np.log10(df_reduced["p_val"])
+
+        heatmap_data = df_reduced.pivot(
+            index="feature", columns="valid_group", values="-log(p_value)"
+        ).fillna(0)
+
         figure = plt.figure(figsize=figsize)
-        sns.heatmap(heatmap_data, 
-                    cmap='viridis',
-                    linewidths=0.5, 
-                    linecolor='gray', 
-                    cbar_kws={'label': '-log10(p_value)'},
-                    fmt=".2f")       
+        sns.heatmap(
+            heatmap_data,
+            cmap="viridis",
+            linewidths=0.5,
+            linecolor="gray",
+            cbar_kws={"label": "-log10(p_value)"},
+            fmt=".2f",
+        )
         plt.ylabel("Feature")
         plt.xlabel("Cluster")
-        plt.xticks(rotation=30, ha='right')
-        
+        plt.xticks(rotation=30, ha="right")
+
         plt.tight_layout()
         plt.show()
-        
+
         self.DFA_plot = figure
+
     def print_avaiable_features(self):
         """
         Print the available features (columns) in the current dataset.
@@ -4556,14 +4575,17 @@ class GroupAnalysis:
         """
 
         if self.proportion_plot is None:
-            print("\nNo results to return! Please run the proportion_analysis() method first.")
+            print(
+                "\nNo results to return! Please run the proportion_analysis() method first."
+            )
         else:
-            if show is True:
-                self.proportion_plot
-                try:
-                    display(self.proportion_plot)
-                except:
-                    None
+            if cfg._DISPLAY_MODE:
+                if show:
+                    self.proportion_plot
+                    try:
+                        display(self.proportion_plot)
+                    except:
+                        None
 
             return self.proportion_plot
 
@@ -4578,6 +4600,8 @@ class GroupAnalysis:
         """
 
         if None in self.proportion_stats:
-            print("\nNo results to return! Please run the proportion_analysis() method first.")
+            print(
+                "\nNo results to return! Please run the proportion_analysis() method first."
+            )
         else:
             return self.proportion_stats

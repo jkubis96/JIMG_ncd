@@ -7,6 +7,7 @@ import re
 import sys
 import tarfile
 import tkinter as tk
+from itertools import combinations
 
 import cv2
 import gdown
@@ -19,7 +20,6 @@ from joblib import Parallel, delayed
 from scipy import stats
 from scipy.spatial import ConvexHull, cKDTree
 from scipy.stats import chi2_contingency
-from itertools import combinations
 from tqdm import tqdm
 
 sys.stdout = io.StringIO()
@@ -119,8 +119,8 @@ def umap_static(umap_result, width=10, height=13):
             label=f"Cluster {label}",
             alpha=0.7,
             s=20,
-            edgecolor="black",     
-            linewidths=0.1,        
+            edgecolor="black",
+            linewidths=0.1,
         )
 
     plt.xlabel("UMAP 1", fontsize=14)
@@ -181,29 +181,26 @@ def test_data(path=""):
         )
 
 
-
-
 def prop_plot(df_pivot, chi_df):
-    
     """
     Create a stacked bar plot of proportional data with post-hoc significance annotations.
-    
+
     Parameters
     ----------
     df_pivot : pandas.DataFrame
         Pivot table where rows represent categories (e.g., compartments) and columns
         represent groups. Values are counts or frequencies.
-        
+
     chi_df : pandas.DataFrame
         DataFrame containing pairwise Chi-square test results with an added
         'Significance_Label' column (e.g., '***', '**', '*', 'ns') for each pair
         of groups. Typically output from `chi_pairs` and `get_significance_label`.
-    
+
     Returns
     -------
     matplotlib.figure.Figure
         The Matplotlib figure object containing the stacked bar plot.
-    
+
     Notes
     -----
     - The function converts raw counts to percentages per group for visualization.
@@ -214,49 +211,60 @@ def prop_plot(df_pivot, chi_df):
       sized text.
     """
 
-    df_pivot_perc = df_pivot.div(df_pivot.sum(axis=0), axis=1) * 100  
+    df_pivot_perc = df_pivot.div(df_pivot.sum(axis=0), axis=1) * 100
 
-    posthoc_text = "\n".join([
-        f"{row['Group 1']} → {row['Group 2']}: {row['Significance_Label']}"
-        for _, row in chi_df.iterrows()
-    ])
+    posthoc_text = "\n".join(
+        [
+            f"{row['Group 1']} → {row['Group 2']}: {row['Significance_Label']}"
+            for _, row in chi_df.iterrows()
+        ]
+    )
 
-    fig, ax = plt.subplots(figsize=(12, 7))  
+    fig, ax = plt.subplots(figsize=(12, 7))
 
-    df_pivot_perc.T.plot(kind='bar', stacked=True, ax=ax, cmap='viridis')
+    df_pivot_perc.T.plot(kind="bar", stacked=True, ax=ax, cmap="viridis")
 
-    ax.set_ylabel('Percentage (%)', fontsize=16)
-    ax.set_xlabel('Groups', fontsize=16)
+    ax.set_ylabel("Percentage (%)", fontsize=16)
+    ax.set_xlabel("Groups", fontsize=16)
 
-    ax.tick_params(axis='both', labelsize=12)
+    ax.tick_params(axis="both", labelsize=12)
 
-    ax.legend(title="Compartment", loc='upper left', bbox_to_anchor=(1.02, 1.05), fontsize=14)
+    ax.legend(
+        title="Compartment", loc="upper left", bbox_to_anchor=(1.02, 1.05), fontsize=14
+    )
 
-    plt.figtext(0.93, 0.6, posthoc_text, ha='left', va='top', fontsize=12, bbox={'facecolor': 'white', 'alpha': 0.7, 'pad': 5})
+    plt.figtext(
+        0.93,
+        0.6,
+        posthoc_text,
+        ha="left",
+        va="top",
+        fontsize=12,
+        bbox={"facecolor": "white", "alpha": 0.7, "pad": 5},
+    )
 
-   
     return fig
-    
+
 
 def get_significance_label(p_value):
     """
     Return a standard significance label based on a p-value.
-    
+
     Parameters
     ----------
     p_value : float
         The p-value for which the significance label should be determined.
-    
+
     Returns
     -------
     str
         A significance marker commonly used in statistical reporting:
-        
-        - '***' : p < 0.001  
-        - '**'  : p < 0.01  
-        - '*'   : p < 0.05  
+
+        - '***' : p < 0.001
+        - '**'  : p < 0.01
+        - '*'   : p < 0.05
         - 'ns'  : not significant (p ≥ 0.05)
-    
+
     Notes
     -----
     This helper function is typically used for annotating statistical test
@@ -265,17 +273,16 @@ def get_significance_label(p_value):
     """
 
     if p_value < 0.001:
-        return '***'
+        return "***"
     elif p_value < 0.01:
-        return '**'
+        return "**"
     elif p_value < 0.05:
-        return '*'
+        return "*"
     else:
-        return 'ns'
-    
-    
+        return "ns"
+
+
 def chi_pairs(df_pivot):
-    
     """
     Compute pairwise Chi-square tests for all combinations of groups in a pivoted dataframe.
 
@@ -313,13 +320,15 @@ def chi_pairs(df_pivot):
     for group1, group2 in group_pairs:
         sub_table = df_pivot.T.loc[[group1, group2]] + 1
         chi2, p, dof, expected = chi2_contingency(sub_table)
-        
-        posthoc_results.append({'Group 1': group1, 'Group 2': group2, 'Chi²': chi2, 'p-value': p})
 
+        posthoc_results.append(
+            {"Group 1": group1, "Group 2": group2, "Chi²": chi2, "p-value": p}
+        )
 
-    posthoc_df = pd.DataFrame(posthoc_results)  
-    
+    posthoc_df = pd.DataFrame(posthoc_results)
+
     return posthoc_df
+
 
 def statistic(input_df, sets=None, metadata=None, n_proc=10):
     """
@@ -517,41 +526,48 @@ def statistic(input_df, sets=None, metadata=None, n_proc=10):
 
             inx = sorted([item for sublist in sets.values() for item in sublist])
             choose = choose.loc[inx]
-            
+
             full_df = pd.DataFrame()
             for n, g in enumerate(group_list):
                 print(f"Calculating statistics for {g}")
-    
-                rest_indices = [idx for i, group in enumerate(group_list) if i != n for idx in sets[group]]
+
+                rest_indices = [
+                    idx
+                    for i, group in enumerate(group_list)
+                    if i != n
+                    for idx in sets[group]
+                ]
 
                 choose["DEG"] = np.where(
                     choose.index.isin(sets[g]),
                     "target",
                     np.where(choose.index.isin(rest_indices), "rest", "drop"),
                 )
-                
+
                 choose = choose[choose["DEG"] != "drop"]
-    
+
                 valid = g
-                choose = choose.loc[:, (choose != 0).any(axis=0)]  # Remove all-zero columns
-    
+                choose = choose.loc[
+                    :, (choose != 0).any(axis=0)
+                ]  # Remove all-zero columns
+
                 # Parallel computation
                 results = Parallel(n_jobs=n_proc)(
                     delayed(stat_calc)(choose, feature)
                     for feature in tqdm(choose.columns[choose.columns != "DEG"])
                 )
-    
+
                 # Convert results to DataFrame
                 combined_df = pd.DataFrame(results)
                 combined_df["valid_group"] = valid
                 combined_df.sort_values(by="p_val", inplace=True)
-    
+
                 # Adjusted p-values using Benjamini-Hochberg method
                 num_tests = len(combined_df)
                 combined_df["adj_pval"] = np.minimum(
                     1, (combined_df["p_val"] * num_tests) / np.arange(1, num_tests + 1)
                 )
-    
+
                 combined_df["-log(p_val)"] = -np.log10(offset + combined_df["p_val"])
                 low_factor = (
                     np.min(
@@ -561,7 +577,7 @@ def statistic(input_df, sets=None, metadata=None, n_proc=10):
                     )
                     * 0.95
                 )
-    
+
                 combined_df["FC"] = (combined_df["avg_valid"] + low_factor) / (
                     combined_df["avg_ctrl"] + low_factor
                 )
@@ -569,7 +585,7 @@ def statistic(input_df, sets=None, metadata=None, n_proc=10):
                 combined_df["norm_diff"] = (
                     combined_df["avg_valid"] - combined_df["avg_ctrl"]
                 )
-                
+
                 full_df = pd.concat([full_df, combined_df])
 
             print("\nAnalysis has finished!")
