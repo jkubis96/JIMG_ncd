@@ -485,6 +485,10 @@ def statistic(input_df, sets=None, metadata=None, n_proc=10):
 
                 # Convert results to DataFrame
                 combined_df = pd.DataFrame(results)
+                combined_df = combined_df[
+                    (combined_df["avg_valid"] > 0) | (combined_df["avg_ctrl"] > 0)
+                ]
+
                 combined_df["valid_group"] = valid
                 combined_df.sort_values(by="p_val", inplace=True)
 
@@ -495,21 +499,23 @@ def statistic(input_df, sets=None, metadata=None, n_proc=10):
                 )
 
                 combined_df["-log(p_val)"] = -np.log10(offset + combined_df["p_val"])
-                low_factor = (
-                    np.min(
-                        (combined_df["avg_valid"] + combined_df["avg_ctrl"])[
-                            combined_df["avg_valid"] + combined_df["avg_ctrl"] > 0
-                        ]
-                    )
-                    * 0.95
+
+                valid_factor = combined_df["avg_valid"].min() / 2
+                ctrl_factor = combined_df["avg_ctrl"].min() / 2
+
+                valid = combined_df["avg_valid"].where(
+                    combined_df["avg_valid"] != 0,
+                    combined_df["avg_valid"] + valid_factor,
+                )
+                ctrl = combined_df["avg_ctrl"].where(
+                    combined_df["avg_ctrl"] != 0, combined_df["avg_ctrl"] + ctrl_factor
                 )
 
-                combined_df["FC"] = (combined_df["avg_valid"] + low_factor) / (
-                    combined_df["avg_ctrl"] + low_factor
-                )
+                combined_df["FC"] = valid / ctrl
+
                 combined_df["log(FC)"] = np.log2(combined_df["FC"])
-                combined_df["norm_diff"] = (combined_df["avg_valid"] + low_factor) - (
-                    combined_df["avg_ctrl"]
+                combined_df["norm_diff"] = (
+                    combined_df["avg_valid"] - combined_df["avg_ctrl"]
                 )
 
                 final_results.append(combined_df)
@@ -569,18 +575,20 @@ def statistic(input_df, sets=None, metadata=None, n_proc=10):
                 )
 
                 combined_df["-log(p_val)"] = -np.log10(offset + combined_df["p_val"])
-                low_factor = (
-                    np.min(
-                        (combined_df["avg_valid"] + combined_df["avg_ctrl"])[
-                            combined_df["avg_valid"] + combined_df["avg_ctrl"] > 0
-                        ]
-                    )
-                    * 0.95
+
+                valid_factor = combined_df["avg_valid"].min() / 2
+                ctrl_factor = combined_df["avg_ctrl"].min() / 2
+
+                valid = combined_df["avg_valid"].where(
+                    combined_df["avg_valid"] != 0,
+                    combined_df["avg_valid"] + valid_factor,
+                )
+                ctrl = combined_df["avg_ctrl"].where(
+                    combined_df["avg_ctrl"] != 0, combined_df["avg_ctrl"] + ctrl_factor
                 )
 
-                combined_df["FC"] = (combined_df["avg_valid"] + low_factor) / (
-                    combined_df["avg_ctrl"] + low_factor
-                )
+                combined_df["FC"] = valid / ctrl
+
                 combined_df["log(FC)"] = np.log2(combined_df["FC"])
                 combined_df["norm_diff"] = (
                     combined_df["avg_valid"] - combined_df["avg_ctrl"]
