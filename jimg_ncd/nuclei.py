@@ -4372,8 +4372,10 @@ class GroupAnalysis:
 
         df_reduced = df_reduced[df_reduced["p_val"] < p_value]
 
-        df_reduced = df_reduced.groupby("valid_group", group_keys=False).apply(
-            lambda x: x.sort_values("esm", ascending=False).head(top_n)
+        df_reduced = (
+            df_reduced.sort_values(["valid_group", "esm"], ascending=[True, False])
+            .groupby("valid_group", as_index=False)
+            .head(top_n)
         )
 
         df_reduced["-log(p_value)"] = -np.log10(df_reduced["p_val"])
