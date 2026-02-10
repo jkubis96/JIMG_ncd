@@ -18,12 +18,14 @@ import pandas as pd
 import plotly.io as pio
 import plotly.offline as pyo
 import seaborn as sns
+from sklearn.cluster import DBSCAN
 import skimage
 import umap
 from csbdeep.utils import normalize
 from skimage import measure
 from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from scipy.cluster.hierarchy import leaves_list, linkage
 from stardist.models import StarDist2D
 from stardist.plot import render_label
 from tqdm import tqdm
@@ -4091,7 +4093,6 @@ class GroupAnalysis:
         - `self.dblabels` (list of str): Cluster labels assigned by DBSCAN for each point in the UMAP embedding.
         """
 
-        from sklearn.cluster import DBSCAN
 
         if None not in self.UMAP_data:
 
@@ -4103,30 +4104,67 @@ class GroupAnalysis:
 
             print("\nNo data for DBSCAN. Please use the UMAP() method first.")
 
-    def UMAP_on_clusters(self, min_entities: int = 50):
+    def UMAP_on_clusters(self, min_entities: int = 50,
+                         width: int = 8, 
+                         heigh: int = 6,
+                         n_per_col: int = 20,
+                         ):
+        
         """
-        Generate UMAP visualizations based on clusters filtered by a minimum entity threshold.
-
-        This method filters clusters with fewer than `min_entities` members and generates two UMAP plots:
-        1. Cluster-only UMAP.
-        2. Cluster + set identifier UMAP.
-
+        Generate UMAP visualizations for clusters filtered by a minimum entity threshold.
+    
+        This method removes clusters containing fewer than `min_entities` observations
+        and produces two UMAP visualizations:
+    
+        1. **Cluster UMAP** – points colored by cluster assignment only.
+        2. **Cluster × Set UMAP** – points colored by the combination of cluster and set identifier.
+    
         Parameters
         ----------
         min_entities : int, optional
-            Minimum number of entities required for a cluster to be included in the visualization. Default is 50.
+            Minimum number of entities required for a cluster to be included
+            in the visualization. Default is 50.
+    
+        width : int, optional
+            Width of the generated matplotlib figures (in inches). Default is 8.
+    
+        heigh : int, optional
+            Height of the generated matplotlib figures (in inches). Default is 6.
+    
+        n_per_col : int, optional
+            Maximum number of legend entries per column. Default is 20.
 
         Notes
         -----
-        Modifies the following attributes:
-        - `self.UMAP_plot['static']['ClusterUMAP']` and `self.UMAP_plot['html']['ClusterUMAP']`: UMAP plots for filtered clusters.
-        - `self.UMAP_plot['static']['ClusterXSetsUMAP']` and `self.UMAP_plot['html']['ClusterXSetsUMAP']`: UMAP plots combining clusters and set identifiers.
-        - `self.tmp_data`: Filtered dataset based on clusters and sets.
-        - `self.tmp_metadata`: Metadata associated with the filtered data.
+        This method updates the following attributes:
+    
+        - `self.UMAP_plot['static']['ClusterUMAP']`  
+          Static matplotlib figure of the filtered cluster-only UMAP.
+    
+        - `self.UMAP_plot['html']['ClusterUMAP']`  
+          Interactive HTML version of the cluster-only UMAP.
+    
+        - `self.UMAP_plot['static']['ClusterXSetsUMAP']`  
+          Static matplotlib figure showing clusters combined with set identifiers.
+    
+        - `self.UMAP_plot['html']['ClusterXSetsUMAP']`  
+          Interactive HTML version of the cluster × set visualization.
+    
+        - `self.tmp_data`  
+          Dataset filtered to include only clusters meeting the `min_entities` threshold.
+    
+        - `self.tmp_metadata`  
+          Metadata corresponding to the filtered dataset.
         """
 
         if None not in self.UMAP_data:
-
+            
+            if hasattr(self, "_tmp_data_old"):
+                self.tmp_data = self._tmp_data_old
+            
+            if hasattr(self, "_tmp_metadata_old"):
+                self.tmp_metadata = self._tmp_metadata_old
+    
             umap_result = pd.DataFrame(self.UMAP_data.copy())
             umap_result["id"] = self.tmp_metadata.index
             umap_result["clusters"] = self.dblabels
@@ -4159,12 +4197,14 @@ class GroupAnalysis:
             tmp_metadata = tmp_metadata[
                 tmp_metadata["clusters"].isin(np.array(filtered_counts.index))
             ]
-
+            
+            umap_result = umap_result.sort_values(by="clusters", key=lambda x: x.astype(int))
+            
             tmp_data = tmp_data[tmp_data.index.isin(np.array(tmp_metadata["full_id"]))]
 
-            static_fig = umap_static(umap_result, width=8, height=6)
+            static_fig = umap_static(umap_result, width=width, height=height, ncol=ncol)
 
-            html_fig = umap_html(umap_result, width=800, height=600)
+            html_fig = umap_html(umap_result, width=width*100, height=height*100)
 
             self.UMAP_plot["static"]["ClusterUMAP"] = static_fig
             self.UMAP_plot["html"]["ClusterUMAP"] = html_fig
@@ -4194,16 +4234,22 @@ class GroupAnalysis:
 
             tmp_data = tmp_data[tmp_data.index.isin(np.array(filtered_counts.index))]
 
-            static_fig = umap_static(umap_result, width=8, height=6)
+            static_fig = umap_static(umap_result, width=width, height=height, ncol=ncol)
 
-            html_fig = umap_html(umap_result, width=800, height=600)
+            html_fig = umap_html(umap_result, width=width*100, height=height*100)
 
             self.UMAP_plot["static"]["ClusterXSetsUMAP"] = static_fig
 
             self.UMAP_plot["html"]["ClusterXSetsUMAP"] = html_fig
-
+            
+            
+            self._tmp_data_old = self.tmp_data
+            self._tmp_metadata_old = self.tmp_metadata
+            
             self.tmp_data = tmp_data
             self.tmp_metadata = tmp_metadata
+            
+            
 
         else:
             print(
@@ -4341,29 +4387,46 @@ class GroupAnalysis:
 
         self.DFA_results = results
 
-    def heatmap_DFA(self, p_value: float | int = 0.05, top_n: int = 5, figsize=(10, 5)):
-        """
-        Generate a heatmap of the top features from DFA results filtered by p-value and log fold change.
+    
 
+
+    def heatmap_DFA(self, 
+                    p_value: float | int = 0.05, 
+                    top_n: int = 5,
+                    scale: bool = False,
+                    clustering: str | None = 'ward',
+                    figsize=(10, 5)):
+        
+        """
+        Generate a heatmap of the top DFA features filtered by p-value and log fold change.
+    
         Parameters
         ----------
         p_value : float or int, optional
-            Significance threshold to filter features based on their p-value. Only features with p_val < p_value are included.
-            Default is 0.05.
-
+            Significance threshold used to filter features by their p-value.
+            Only features with p_val < p_value are included. Default is 0.05.
+    
         top_n : int, optional
-            Number of top features to select per group based on the 'esm' score. Default is 5.
-
+            Number of top features selected per group based on the 'esm' score.
+            Default is 5.
+    
+        scale : bool, optional
+            Whether to apply Min–Max scaling to heatmap values across features.
+            Default is False.
+    
+        clustering : str or None, optional
+            Hierarchical clustering method applied to rows/columns of the heatmap.
+            If None, clustering is disabled. Default is 'ward'.
+    
         figsize : tuple, optional
             Size of the resulting matplotlib figure. Default is (10, 5).
-
+    
         Notes
         -----
-        The method displays the heatmap and stores the figure in `self.DFA_plot`.
-
-        Conditions:
         - Only features with a positive log fold change ('log(FC)' > 0) are considered.
-        - The heatmap values represent -log10(p_value) for visualization.
+        - Heatmap values represent -log10(p_value) for visualization.
+        - If `scale=True`, values are normalized using Min–Max scaling.
+        - The generated figure is displayed and stored in `self.DFA_plot`.
         """
 
         df_reduced = self.DFA_results.copy()
@@ -4384,13 +4447,34 @@ class GroupAnalysis:
             index="feature", columns="valid_group", values="-log(p_value)"
         ).fillna(0)
 
+        label = "-log10(p_value)"
+        
+        if scale:
+            label = f"scaled({label})"
+            scaler = MinMaxScaler()
+            heatmap_data = pd.DataFrame(
+                scaler.fit_transform(heatmap_data),
+                index=heatmap_data.index,
+                columns=heatmap_data.columns,
+            )
+            
+        if clustering is not None:
+            Z_rows = linkage(heatmap_data.values, method=clustering)
+            row_order = leaves_list(Z_rows)
+    
+            Z_cols = linkage(heatmap_data.values.T, method=clustering)
+            col_order = leaves_list(Z_cols)
+    
+            heatmap_data = heatmap_data.iloc[row_order, col_order]
+
+
         figure = plt.figure(figsize=figsize)
         sns.heatmap(
             heatmap_data,
             cmap="viridis",
             linewidths=0.5,
             linecolor="gray",
-            cbar_kws={"label": "-log10(p_value)"},
+            cbar_kws={"label": label},
             fmt=".2f",
         )
         plt.ylabel("Feature")
@@ -4432,38 +4516,7 @@ class GroupAnalysis:
 
             return self.DFA_plot
 
-        df_reduced = self.DFA_results.copy()
-
-        df_reduced = df_reduced[df_reduced["p_val"] < p_value]
-        df_reduced = df_reduced[df_reduced["log(FC)"] > 0]
-
-        df_reduced = df_reduced.groupby("valid_group", group_keys=False).apply(
-            lambda x: x.sort_values("esm", ascending=False).head(top_n)
-        )
-
-        df_reduced["-log(p_value)"] = -np.log10(df_reduced["p_val"])
-
-        heatmap_data = df_reduced.pivot(
-            index="feature", columns="valid_group", values="-log(p_value)"
-        ).fillna(0)
-
-        figure = plt.figure(figsize=figsize)
-        sns.heatmap(
-            heatmap_data,
-            cmap="viridis",
-            linewidths=0.5,
-            linecolor="gray",
-            cbar_kws={"label": "-log10(p_value)"},
-            fmt=".2f",
-        )
-        plt.ylabel("Feature")
-        plt.xlabel("Cluster")
-        plt.xticks(rotation=30, ha="right")
-
-        plt.tight_layout()
-        plt.show()
-
-        self.DFA_plot = figure
+       
 
     def print_avaiable_features(self):
         """
@@ -4552,6 +4605,14 @@ class GroupAnalysis:
             aggfunc="count",
             fill_value=0,
         )
+        
+        Z_rows = linkage(df_pivot.values, method='ward')
+        row_order = leaves_list(Z_rows)
+
+        Z_cols = linkage(df_pivot.values.T, method='ward')
+        col_order = leaves_list(Z_cols)
+
+        df_pivot = df_pivot.iloc[row_order, col_order]
 
         chi_df = chi_pairs(df_pivot)
 
