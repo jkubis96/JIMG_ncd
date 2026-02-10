@@ -4210,7 +4210,7 @@ class GroupAnalysis:
             
             tmp_data = tmp_data[tmp_data.index.isin(np.array(tmp_metadata["full_id"]))]
 
-            static_fig = umap_static(umap_result, width=width, height=height, ncol=ncol)
+            static_fig = umap_static(umap_result, width=width, height=height, n_per_col=n_per_col)
 
             html_fig = umap_html(umap_result, width=width*100, height=height*100)
 
@@ -4242,7 +4242,7 @@ class GroupAnalysis:
 
             tmp_data = tmp_data[tmp_data.index.isin(np.array(filtered_counts.index))]
 
-            static_fig = umap_static(umap_result, width=width, height=height, ncol=ncol)
+            static_fig = umap_static(umap_result, width=width, height=height, n_per_col=n_per_col)
 
             html_fig = umap_html(umap_result, width=width*100, height=height*100)
 
