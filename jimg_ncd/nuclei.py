@@ -4452,7 +4452,6 @@ class GroupAnalysis:
             .head(top_n)
         )
 
-
         heatmap_data = df_reduced.pivot(
             index="feature", columns="valid_group", values="-log(p_val)"
         ).fillna(0)

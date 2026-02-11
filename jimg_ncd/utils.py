@@ -219,6 +219,10 @@ def prop_plot(df_pivot, chi_df):
 
     df_pivot_perc = df_pivot.div(df_pivot.sum(axis=0), axis=1) * 100
 
+    df_pivot_perc = df_pivot_perc.sort_values(by=1, axis=1)
+
+    df_pivot_perc = df_pivot_perc.T.sort_values(by=list(df_pivot_perc.index)).T
+
     posthoc_text = "\n".join(
         [
             f"{row['Group 1']} → {row['Group 2']}: {row['Significance_Label']}"
@@ -509,13 +513,20 @@ def statistic(input_df, sets=None, metadata=None, n_proc=10):
                 valid_factor = combined_df["avg_valid"].min() / 2
                 ctrl_factor = combined_df["avg_ctrl"].min() / 2
 
-                valid = combined_df["avg_valid"].where(
-                    combined_df["avg_valid"] != 0,
-                    combined_df["avg_valid"] + valid_factor,
-                ) + offset
-                ctrl = combined_df["avg_ctrl"].where(
-                    combined_df["avg_ctrl"] != 0, combined_df["avg_ctrl"] + ctrl_factor
-                ) + offset
+                valid = (
+                    combined_df["avg_valid"].where(
+                        combined_df["avg_valid"] != 0,
+                        combined_df["avg_valid"] + valid_factor,
+                    )
+                    + offset
+                )
+                ctrl = (
+                    combined_df["avg_ctrl"].where(
+                        combined_df["avg_ctrl"] != 0,
+                        combined_df["avg_ctrl"] + ctrl_factor,
+                    )
+                    + offset
+                )
 
                 combined_df["FC"] = valid / ctrl
 
@@ -585,10 +596,13 @@ def statistic(input_df, sets=None, metadata=None, n_proc=10):
                 valid_factor = combined_df["avg_valid"].min() / 2
                 ctrl_factor = combined_df["avg_ctrl"].min() / 2
 
-                valid = combined_df["avg_valid"].where(
-                    combined_df["avg_valid"] != 0,
-                    combined_df["avg_valid"] + valid_factor,
-                ) + offset
+                valid = (
+                    combined_df["avg_valid"].where(
+                        combined_df["avg_valid"] != 0,
+                        combined_df["avg_valid"] + valid_factor,
+                    )
+                    + offset
+                )
                 ctrl = combined_df["avg_ctrl"].where(
                     combined_df["avg_ctrl"] != 0, combined_df["avg_ctrl"] + ctrl_factor
                 )
