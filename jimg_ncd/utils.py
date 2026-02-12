@@ -100,7 +100,6 @@ def umap_static(umap_result, width=10, height=13, n_per_col=20):
 
     fig = plt.figure(figsize=(width, height))
 
-
     sorted_labels = pd.unique(umap_result["clusters"])
 
     color_map = {
@@ -502,24 +501,27 @@ def statistic(input_df, sets=None, metadata=None, n_proc=10):
                     1, (combined_df["p_val"] * num_tests) / np.arange(1, num_tests + 1)
                 )
 
-                combined_df["-log(p_val)"] = -np.log10(offset + combined_df["p_val"])
+                combined_df["p_val"] = combined_df["p_val"].replace(0, 2**-1074)
+
+                combined_df["-log(p_val)"] = -np.log10(combined_df["p_val"])
 
                 valid_factor = combined_df["avg_valid"].min() / 2
+
                 ctrl_factor = combined_df["avg_ctrl"].min() / 2
 
-                valid = (
-                    combined_df["avg_valid"].where(
-                        combined_df["avg_valid"] != 0,
-                        combined_df["avg_valid"] + valid_factor,
-                    )
-                    + offset
+                if not np.isfinite(valid_factor) or valid_factor == 0:
+                    valid_factor += offset
+
+                if not np.isfinite(ctrl_factor) or ctrl_factor == 0:
+                    ctrl_factor += offset
+
+                valid = combined_df["avg_valid"].where(
+                    combined_df["avg_valid"] != 0,
+                    combined_df["avg_valid"] + valid_factor,
                 )
-                ctrl = (
-                    combined_df["avg_ctrl"].where(
-                        combined_df["avg_ctrl"] != 0,
-                        combined_df["avg_ctrl"] + ctrl_factor,
-                    )
-                    + offset
+                ctrl = combined_df["avg_ctrl"].where(
+                    combined_df["avg_ctrl"] != 0,
+                    combined_df["avg_ctrl"] + ctrl_factor,
                 )
 
                 combined_df["FC"] = valid / ctrl
